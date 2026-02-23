@@ -1,24 +1,38 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { Tabs } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Footer from "@/componeets/Footer";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { useFonts } from "expo-font";
+import {
+  Inter_400Regular,
+  Inter_600SemiBold,
+} from "@expo-google-fonts/inter";
+import { Poppins_600SemiBold } from "@expo-google-fonts/poppins";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Poppins_600SemiBold,
+  });
+
+  // ✅ IMPORTANT — wait until fonts load
+  if (!fontsLoaded) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
+    <ThemeProvider value={DefaultTheme}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <Tabs
+          screenOptions={{ headerShown: false }}
+          tabBar={(props) => <Footer {...props} />}
+        >
+          <Tabs.Screen name="Home" />
+          <Tabs.Screen name="Streaks" />
+          <Tabs.Screen name="Sleep" />
+          <Tabs.Screen name="Stats" />
+        </Tabs>
+      </SafeAreaView>
     </ThemeProvider>
   );
 }
