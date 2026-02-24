@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { View, Modal, StyleSheet, Pressable } from "react-native";
-import { TextInput, Text } from "react-native-paper";
-import {Fonts} from "@/constants/fonts"
+import { Fonts } from "@/constants/fonts";
+import { useState } from "react";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { Text, TextInput } from "react-native-paper";
 type Props = {
   visible: boolean;
   onClose: () => void;

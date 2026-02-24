@@ -1,15 +1,14 @@
-import React from "react";
-import { View, StyleSheet, Pressable, Text } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 type TabRoutes = "Home" | "Streaks" | "Sleep" | "Stats";
 
 const icons: Record<TabRoutes, keyof typeof MaterialIcons.glyphMap> = {
   Home: "home",
-  Streaks: "whatshot",
-  Sleep: "nightlight",
-  Stats: "insights",
+  Streaks: "local-fire-department",
+  Sleep: "bedtime",
+  Stats: "analytics",
 };
 
 export default function Footer({ state, navigation }: BottomTabBarProps) {

@@ -1,8 +1,8 @@
-import { StyleSheet, View, FlatList } from "react-native";
-import { Card, Text, Avatar, FAB } from "react-native-paper";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
+import { FlatList, Modal, Pressable, StyleSheet, View } from "react-native";
+import { Avatar, Card, FAB, Text } from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const SLEEP_STORAGE_KEY = "sleep_logs";
 
@@ -27,9 +27,12 @@ const formatDateTime = (date: Date) => {
   return `${day} at ${time}`;
 };
 
-export default function Screen() {
+export default function Sleep() {
   const [data, setData] = useState<SleepEntry[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [addVisible, setAddVisible] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadSleepLogs = async () => {
@@ -98,10 +101,26 @@ export default function Screen() {
       );
       return nextData;
     });
+    setAddVisible(false);
+  };
+
+  const openDeleteModal = (id: string) => {
+    setSelectedId(id);
+    setVisible(true);
+  };
+
+  const handleDelete = () => {
+    if (!selectedId) return;
+    setData((prev) => prev.filter((item) => item.id !== selectedId));
+    setVisible(false);
   };
 
   const renderItem = ({ item }: { item: SleepEntry }) => (
-    <Card style={styles.card} mode="contained">
+    <Card
+      style={styles.card}
+      mode="contained"
+      onPress={() => openDeleteModal(item.id)}
+    >
       <View style={styles.row}>
         <Avatar.Text size={30} label="Z" style={styles.avatar} />
 
@@ -134,7 +153,67 @@ export default function Screen() {
         }
       />
 
-      <FAB icon="plus" style={styles.fab} onPress={handleAddSleep} />
+      <FAB icon="plus" style={styles.fab} onPress={() => setAddVisible(true)} />
+
+      <Modal
+        visible={addVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setAddVisible(false)}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Log Sleep</Text>
+            <Text style={styles.modalText}>
+              Add a sleep log for the current time?
+            </Text>
+            <View style={styles.actions}>
+              <Pressable
+                style={[styles.button, styles.cancel]}
+                onPress={() => setAddVisible(false)}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.button, styles.done]}
+                onPress={handleAddSleep}
+              >
+                <Text style={styles.deleteText}>Log</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={visible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setVisible(false)}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Delete Sleep Log</Text>
+            <Text style={styles.modalText}>
+              Are you sure you want to delete this sleep entry?
+            </Text>
+            <View style={styles.actions}>
+              <Pressable
+                style={[styles.button, styles.cancel]}
+                onPress={() => setVisible(false)}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.button, styles.delete]}
+                onPress={handleDelete}
+              >
+                <Text style={styles.deleteText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -143,6 +222,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+    padding: 16
   },
 
   header: {
@@ -206,5 +286,62 @@ const styles = StyleSheet.create({
     bottom: 100,
     backgroundColor: "#ff8446",
     borderRadius: 40,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(17, 24, 39, 0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modal: {
+    width: "85%",
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 10,
+    color: "#111",
+  },
+  modalText: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 20,
+  },
+  actions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  button: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+  },
+  cancel: {
+    backgroundColor: "#F1F1F1",
+  },
+  delete: {
+    backgroundColor: "#FF4D4F",
+  },
+  done: {
+    backgroundColor: "#F59E0B",
+  },
+  cancelText: {
+    color: "#333",
+    fontWeight: "600",
+  },
+  deleteText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });

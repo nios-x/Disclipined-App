@@ -1,24 +1,22 @@
+import AddTodo from "@/componeets/AddTodo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
 import {
-  StyleSheet,
-  View,
   FlatList,
+  Image,
   Modal,
   Pressable,
-  Image,
-  Linking,
+  StyleSheet,
+  View,
 } from "react-native";
-import { Card, Text, Avatar, FAB } from "react-native-paper";
+import { Avatar, Button, Card, FAB, Text } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import AddTodo from "@/componeets/AddTodo";
 
 const TODOS_STORAGE_KEY = "todos_data";
-const LEETCODE_STORAGE_KEY = "leetcode_profile";
-const GITHUB_STORAGE_KEY = "github_profile";
-const LEETCODE_PROFILE_URL =
-  "https://alfa-leetcode-api.onrender.com/soumyajaiswal7708";
-const GITHUB_PROFILE_URL = "https://api.github.com/users/nios-x";
+const FINISHED_TODOS_COUNT_KEY = "todos_finished_count";
+const POINTS_STORAGE_KEY = "user_points";
+const TASK_COMPLETION_HISTORY_KEY = "todos_completed_history";
+const POINTS_PER_TASK = 10;
 const APP_LOGO = require("../assets/images/icon.png");
 
 type Todo = {
@@ -27,28 +25,11 @@ type Todo = {
   description: string;
 };
 
-type LeetCodeProfile = {
-  username: string;
-  name: string;
-  avatar: string;
-  ranking: number;
-  reputation: number;
-  gitHub: string | null;
-  linkedIN: string | null;
-  country: string | null;
-  about: string | null;
-};
-
-type GitHubProfile = {
-  login: string;
-  name: string | null;
-  avatar_url: string;
-  html_url: string;
-  bio: string | null;
-  blog: string | null;
-  public_repos: number;
-  followers: number;
-  following: number;
+const getLocalDayKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const initialTodos: Todo[] = [
@@ -68,12 +49,11 @@ const initialTodos: Todo[] = [
     description: "Datyshdsljkhck fdsfghlsh L dffhdjlfhs kjdfskjdhfjk jbkjb",
   },
 ];
-export default function Screen() {
+export default function Home() {
   const [addVisible, setAddVisible] = useState(false);
   const [data, setData] = useState<Todo[]>(initialTodos);
   const [hydrated, setHydrated] = useState(false);
-  const [profile, setProfile] = useState<LeetCodeProfile | null>(null);
-  const [githubProfile, setGithubProfile] = useState<GitHubProfile | null>(null);
+  const [points, setPoints] = useState(0);
 
   useEffect(() => {
     const loadTodos = async () => {
@@ -93,60 +73,6 @@ export default function Screen() {
   }, []);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const cachedProfile = await AsyncStorage.getItem(LEETCODE_STORAGE_KEY);
-        if (cachedProfile) {
-          setProfile(JSON.parse(cachedProfile));
-        }
-
-        const response = await fetch(LEETCODE_PROFILE_URL);
-        if (!response.ok) {
-          throw new Error("Failed to fetch profile");
-        }
-
-        const latestProfile: LeetCodeProfile = await response.json();
-        setProfile(latestProfile);
-        await AsyncStorage.setItem(
-          LEETCODE_STORAGE_KEY,
-          JSON.stringify(latestProfile)
-        );
-      } catch (error) {
-        console.warn("Failed to load LeetCode profile:", error);
-      }
-    };
-
-    loadProfile();
-  }, []);
-
-  useEffect(() => {
-    const loadGithubProfile = async () => {
-      try {
-        const cachedGithubProfile = await AsyncStorage.getItem(GITHUB_STORAGE_KEY);
-        if (cachedGithubProfile) {
-          setGithubProfile(JSON.parse(cachedGithubProfile));
-        }
-
-        const response = await fetch(GITHUB_PROFILE_URL);
-        if (!response.ok) {
-          throw new Error("Failed to fetch GitHub profile");
-        }
-
-        const latestGithubProfile: GitHubProfile = await response.json();
-        setGithubProfile(latestGithubProfile);
-        await AsyncStorage.setItem(
-          GITHUB_STORAGE_KEY,
-          JSON.stringify(latestGithubProfile)
-        );
-      } catch (error) {
-        console.warn("Failed to load GitHub profile:", error);
-      }
-    };
-
-    loadGithubProfile();
-  }, []);
-
-  useEffect(() => {
     if (!hydrated) return;
 
     const saveTodos = async () => {
@@ -160,6 +86,20 @@ export default function Screen() {
     saveTodos();
   }, [data, hydrated]);
 
+  useEffect(() => {
+    const loadPoints = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(POINTS_STORAGE_KEY);
+        const parsed = Number(raw ?? "0");
+        setPoints(Number.isFinite(parsed) ? parsed : 0);
+      } catch (error) {
+        console.warn("Failed to load points:", error);
+      }
+    };
+
+    loadPoints();
+  }, []);
+
   const [visible, setVisible] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -168,32 +108,91 @@ export default function Screen() {
     setVisible(true);
   };
 
+  const incrementStoredNumber = (
+    key: string,
+    amount: number,
+    onUpdate?: (value: number) => void
+  ) => {
+    AsyncStorage.getItem(key)
+      .then((raw) => {
+        const current = Number(raw ?? "0");
+        const safeCurrent = Number.isFinite(current) ? current : 0;
+        const nextValue = safeCurrent + amount;
+        onUpdate?.(nextValue);
+        return AsyncStorage.setItem(key, nextValue.toString());
+      })
+      .catch((error) => {
+        console.warn(`Failed to update ${key}:`, error);
+      });
+  };
+
+  const incrementTodayCompletionHistory = () => {
+    const todayKey = getLocalDayKey(new Date());
+
+    AsyncStorage.getItem(TASK_COMPLETION_HISTORY_KEY)
+      .then((raw) => {
+        const parsed = raw ? (JSON.parse(raw) as Record<string, number>) : {};
+        const nextHistory = {
+          ...parsed,
+          [todayKey]: (parsed[todayKey] ?? 0) + 1,
+        };
+        return AsyncStorage.setItem(
+          TASK_COMPLETION_HISTORY_KEY,
+          JSON.stringify(nextHistory)
+        );
+      })
+      .catch((error) => {
+        console.warn("Failed to update completion history:", error);
+      });
+  };
+
   const handleDelete = () => {
     if (!selectedId) return;
-    setData((prev) => prev.filter((item) => item.id !== selectedId));
+    setData((prev) => {
+      const nextData = prev.filter((item) => item.id !== selectedId);
+      AsyncStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(nextData)).catch(
+        (error) => {
+          console.warn("Failed to save todos to storage:", error);
+        }
+      );
+      return nextData;
+    });
     setVisible(false);
   };
   const handleDone = () => {
     if (!selectedId) return;
-    setData((prev) => prev.filter((item) => item.id !== selectedId));
+    setData((prev) => {
+      const nextData = prev.filter((item) => item.id !== selectedId);
+      AsyncStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(nextData)).catch(
+        (error) => {
+          console.warn("Failed to save todos to storage:", error);
+        }
+      );
+      return nextData;
+    });
+    incrementStoredNumber(FINISHED_TODOS_COUNT_KEY, 1);
+    incrementStoredNumber(POINTS_STORAGE_KEY, POINTS_PER_TASK, setPoints);
+    incrementTodayCompletionHistory();
     setVisible(false);
   };
   const handleAddTodo = (title: string, description: string) => {
-    setData((prev) => [
-      ...prev,
-      {
+    setData((prev) => {
+      const nextTodo = {
         id: Date.now().toString(),
         title,
         description,
-      },
-    ]);
-  };
-
-  const openExternal = async (url: string) => {
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-    }
+      };
+      const nextData = [
+        ...prev,
+        nextTodo,
+      ];
+      AsyncStorage.setItem(TODOS_STORAGE_KEY, JSON.stringify(nextData)).catch(
+        (error) => {
+          console.warn("Failed to save todos to storage:", error);
+        }
+      );
+      return nextData;
+    });
   };
 
   const renderItem = ({ item }: { item: Todo }) => (
@@ -230,9 +229,22 @@ export default function Screen() {
       <View style={styles.headerWrap}>
         <Image source={APP_LOGO} style={styles.logo} />
         <View>
-          <Text style={styles.header}>Code Dashboard</Text>
+          <Text style={styles.header}> クᴏᴜᴍʏᴀ Dashboard</Text>
           <Text style={styles.subHeader}>Track profile stats and daily tasks</Text>
+          <Text style={styles.pointsText}>Points: {points}</Text>
         </View>
+      </View>
+
+      <View style={styles.createButtonWrap}>
+        <Button
+          mode="contained"
+          icon="plus"
+          onPress={() => setAddVisible(true)}
+          style={styles.createButton}
+          contentStyle={styles.createButtonContent}
+        >
+          Create Todo
+        </Button>
       </View>
 
       <FlatList
@@ -242,73 +254,6 @@ export default function Screen() {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <>
-            {profile ? (
-              <Card style={styles.profileCard} mode="contained">
-                <View style={styles.row}>
-                  <Avatar.Image
-                    size={46}
-                    source={{ uri: profile.avatar }}
-                    style={styles.profileAvatar}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text variant="titleMedium" style={styles.title}>
-                      {profile.name}
-                    </Text>
-                    <Text variant="bodyMedium" style={styles.description}>
-                      @{profile.username} | Rank #{profile.ranking}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.meta}>Country: {profile.country ?? "N/A"}</Text>
-                <Text style={styles.meta}>Reputation: {profile.reputation}</Text>
-                {profile.about ? <Text style={styles.meta}>About: {profile.about}</Text> : null}
-                {profile.gitHub ? (
-                  <Pressable onPress={() => openExternal(profile.gitHub as string)}>
-                    <Text style={styles.link}>GitHub: {profile.gitHub}</Text>
-                  </Pressable>
-                ) : null}
-                {profile.linkedIN ? (
-                  <Pressable onPress={() => openExternal(profile.linkedIN as string)}>
-                    <Text style={styles.link}>LinkedIn: {profile.linkedIN}</Text>
-                  </Pressable>
-                ) : null}
-              </Card>
-            ) : null}
-
-            {githubProfile ? (
-              <Card style={styles.profileCard} mode="contained">
-                <View style={styles.row}>
-                  <Avatar.Image
-                    size={46}
-                    source={{ uri: githubProfile.avatar_url }}
-                    style={styles.profileAvatar}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text variant="titleMedium" style={styles.title}>
-                      {githubProfile.name ?? githubProfile.login}
-                    </Text>
-                    <Text variant="bodyMedium" style={styles.description}>
-                      @{githubProfile.login}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.meta}>
-                  Repos {githubProfile.public_repos} | Followers {githubProfile.followers} |
-                  Following {githubProfile.following}
-                </Text>
-                {githubProfile.bio ? (
-                  <Text style={styles.meta}>Bio: {githubProfile.bio}</Text>
-                ) : null}
-                {githubProfile.blog ? (
-                  <Pressable onPress={() => openExternal(githubProfile.blog as string)}>
-                    <Text style={styles.link}>Website: {githubProfile.blog}</Text>
-                  </Pressable>
-                ) : null}
-                <Pressable onPress={() => openExternal(githubProfile.html_url)}>
-                  <Text style={styles.link}>Profile: {githubProfile.html_url}</Text>
-                </Pressable>
-              </Card>
-            ) : null}
             <Text style={styles.sectionTitle}>Your Tasks</Text>
           </>
         }
@@ -391,11 +336,32 @@ const styles = StyleSheet.create({
   subHeader: {
     color: "#5B6473",
     marginTop: 2,
+    marginLeft: 6
+  },
+  pointsText: {
+    color: "#F59E0B",
+    marginTop: 4,
+    marginLeft: 6,
+    fontWeight: "700",
   },
 
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 120,
+    paddingBottom: 12,
+  },
+  createButtonWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 18,
+  },
+  createButton: {
+    borderRadius: 12,
+    backgroundColor: "#111827",
+    alignSelf: "flex-end",
+    marginTop: 10
+  },
+  createButtonContent: {
+    paddingBottom: 0,
+    paddingVertical: 2,
   },
   sectionTitle: {
     fontSize: 18,
@@ -403,14 +369,8 @@ const styles = StyleSheet.create({
     color: "#111827",
     marginTop: 6,
     marginBottom: 12,
-  },
-  profileCard: {
-    borderRadius: 18,
-    marginBottom: 14,
-    padding: 14,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#ECEFF5",
+    paddingLeft:3,
+    paddingTop:4 
   },
   todoCard: {
     borderRadius: 18,
@@ -442,10 +402,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: "#6B7280",
   },
-  profileAvatar: {
-    backgroundColor: "#F3F3F3",
-  },
-
   row: {
     flexDirection: "row",
     gap: 12,
@@ -467,16 +423,6 @@ const styles = StyleSheet.create({
     color: "#4B5563",
     lineHeight: 19,
   },
-  meta: {
-    color: "#374151",
-    marginTop: 7,
-    lineHeight: 19,
-  },
-  link: {
-    color: "#2563EB",
-    marginTop: 7,
-  },
-
   overlay: {
     flex: 1,
     backgroundColor: "rgba(17, 24, 39, 0.45)",
