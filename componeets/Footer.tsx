@@ -2,13 +2,13 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-type TabRoutes = "Home" | "Streaks" | "Sleep" | "Stats";
+type TabRoutes = "home" | "streaks" | "sleep" | "stats";
 
-const icons: Record<TabRoutes, keyof typeof MaterialIcons.glyphMap> = {
-  Home: "home",
-  Streaks: "local-fire-department",
-  Sleep: "bedtime",
-  Stats: "analytics",
+const icons:any = {
+  home: "home",
+  streaks: "local-fire-department",
+  sleep: "bedtime",
+  stats: "analytics",
 };
 
 export default function Footer({ state, navigation }: BottomTabBarProps) {
@@ -16,9 +16,9 @@ export default function Footer({ state, navigation }: BottomTabBarProps) {
     <View style={styles.wrapper}>
       <View style={styles.container}>
         {state.routes.map((route, index) => {
+          {console.log(JSON.stringify(state))}
           const isFocused = state.index === index;
-
-          const routeName = route.name as TabRoutes;
+          const routeName =  route.name!=="index"?route.name:"home" as TabRoutes;
           const iconName =
             icons[routeName] ?? ("circle" as keyof typeof MaterialIcons.glyphMap);
 
@@ -42,7 +42,7 @@ export default function Footer({ state, navigation }: BottomTabBarProps) {
                   { color: isFocused ? "#ff7d63" : "#999" },
                 ]}
               >
-                {route.name}
+                {route.name==="index"?"Home":route.name}
               </Text>
             </Pressable>
           );
