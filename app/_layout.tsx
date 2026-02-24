@@ -227,10 +227,10 @@ export default function RootLayout() {
             screenOptions={{ headerShown: false }}
             tabBar={(props) => <Footer {...props} />}
           >
-            <Tabs.Screen name="Home" />
-            <Tabs.Screen name="Streaks" />
-            <Tabs.Screen name="Sleep" />
-            <Tabs.Screen name="Stats" />
+            <Tabs.Screen name="index" />
+            <Tabs.Screen name="streaks" />
+            <Tabs.Screen name="sleep" />
+            <Tabs.Screen name="stats" />
           </Tabs>
         </SafeAreaView>
       </ThemeProvider>
